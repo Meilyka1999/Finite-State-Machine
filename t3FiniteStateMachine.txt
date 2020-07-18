@@ -1,0 +1,293 @@
+using System;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Threading;
+using System.IO;
+using System.Runtime.ExceptionServices;
+using System.Linq.Expressions;
+
+namespace task3
+{
+    public delegate void anAction();
+    class FiniteStateTable
+    {
+        private string[] stateNames;
+        private string[] eventNames;
+        private string STATE;
+        public cell_FST[,] FST;
+        private int numStates;
+        private int numEvents;
+        private static List<string> output;
+
+        public struct cell_FST
+        {
+            public string nextState;
+            public string currentState;
+            public string triggerEvent;
+            public List<action> Actions;
+
+            public cell_FST(string stateName, string eventName)
+            {
+                this.currentState = stateName;
+                this.nextState = stateName; //next State is initialized as the current state
+                this.triggerEvent = eventName;
+                this.Actions = new List<action>();
+            }
+        }
+
+        public struct action
+        {
+            public anAction actionFunction;
+            public string actionName;
+            public action(string Name, anAction Function)
+            {
+                this.actionFunction = Function;
+                this.actionName = Name;
+            }
+        }
+        //Helpful Functions
+        //doesExist(): string as an input, returns true if the string is an event or state in the FST and false if its not
+        public bool doesExist(string Name)
+        {
+            for (int i = 0; i < this.numStates; i++)
+            {
+                if (Name == this.stateNames[i])
+                {
+                    return true;
+                }
+            }
+            for (int i = 0; i < this.numEvents; i++)
+            {
+                if (Name == this.eventNames[i])
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        //findIndex(): Takes in a string and returns the index of the event or state in the table as an int
+        private int findIndex(string Name)
+        {
+            int Index = 0;
+            for (int i = 0; i < this.numStates; i++)
+            {
+                if (this.stateNames[i] == Name)
+                {
+                    Index = i;
+                }
+            }
+            for (int i = 0; i < this.numEvents; i++)
+            {
+                if (this.eventNames[i] == Name)
+                {
+                    Index = i;
+                }
+            }
+            return Index;
+        }
+
+        /*logData() takes a string as input and adds it tothe list output which will be printed to a textfile
+                    when the program ends*/
+        public static void logData(string Log) { output.Add(Log); }
+
+        /*getData() returns the list of strings output*/
+        public static List<string> getData() { return output; }
+
+        /*GetTimeStamp(): returns a string containing the time when it was called*/
+        public static String GetTimestamp() { return DateTime.Now.ToString("yyy-MM-dd HH:mm:ss:ffff tt "); }
+
+        public void stateTransition(string Event)
+        {
+            foreach (action Action in this.GetActions(this.GetState(), Event))
+            {
+                logData(GetTimestamp() + Action.actionName); //log trigger event
+                Action.actionFunction(); //run each event
+            }
+            this.SetState(this.GetNextState(this.GetState(), Event)); //set state
+            Console.WriteLine("Now in state " + this.GetState()); //display state
+            logData(GetTimestamp() + "Now in state " + this.GetState()); //log state change
+        }
+
+        //Getters and Setters
+        /*SetNextState(): takes string for new state and strings for current state and trigger event and sets new state
+                          within the appropriate cell of the Finite State Table*/
+        public void SetNextState(string nextState, string state, string Event)
+        {
+            int stateIndex = findIndex(state);
+            int eventIndex = findIndex(Event);
+            this.FST[stateIndex, eventIndex].nextState = nextState;
+        }
+
+        /*GetNextState(): takes strings for current state and trigger event and returns the variable nextState
+                          from the appropriate cell of the Finite State Table*/
+        public string GetNextState(string state, string Event)
+        {
+            int stateIndex = findIndex(state);
+            int eventIndex = findIndex(Event);
+            return this.FST[stateIndex, eventIndex].nextState;
+        }
+
+        /*GetActions(): takes in strings for state and event as inputs and calls and logs the actions from the
+         *              appropriate cell of the FST*/
+        public List<action> GetActions(string state, string Event)
+        {
+            int stateIndex = findIndex(state);
+            int eventIndex = findIndex(Event);
+            return this.FST[stateIndex, eventIndex].Actions;
+        }
+
+        /*SetActions(): takes a list of actions and strings for the state and event and sets the list of actions 
+         *              to the action list 'Actions' in the appropriate cell of the FST*/
+        public void SetActions(List<action> allActions, string state, string Event)
+        {
+            int stateIndex = findIndex(state);
+            int eventIndex = findIndex(Event);
+            this.FST[stateIndex, eventIndex].Actions = allActions;
+        }
+
+        /*AddActions(): takes a struct action and strings for the state and event and adds the struct (containing the
+ *              function and name of the action) to the list of actions in the appropriate cell of the FST*/
+        public void AddActions(action newAction, string state, string Event)
+        {
+            int stateIndex = findIndex(state);
+            int eventIndex = findIndex(Event);
+            this.FST[stateIndex, eventIndex].Actions.Add(newAction);
+        }
+
+        public string GetState()
+        {
+            return STATE;
+        }
+
+        public void SetState(string State)
+        {
+            this.STATE = State;
+        }
+
+        //Constructor
+        public FiniteStateTable(string[] stateNames, string[] eventNames, string initialState)
+        {
+            this.numStates = stateNames.Length;
+            this.numEvents = eventNames.Length;
+            this.stateNames = stateNames;
+            this.eventNames = eventNames;
+            this.STATE = initialState;
+            FiniteStateTable.output = new List<string>();
+
+            this.FST = new cell_FST[numStates, numEvents];
+            for (int i = 0; i < numStates; i++)
+            {
+                for (int j = 0; j < numEvents; j++)
+                {
+                    this.FST[i, j].nextState = new string(stateNames[i]); //next event is itself
+                    this.FST[i, j].currentState = new string(stateNames[i]); //next event is itself
+                    this.FST[i, j].triggerEvent = new string(eventNames[j]); //next event is itself
+                    this.FST[i, j].Actions = new List<action>(); // (doNothing);
+                }
+            }
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            //Initializing Task2 FST
+            string[] stateNamesTask2 = { "S0", "S1", "S2" }; //State Names for Task2  FST
+            string[] eventNamesTask2 = { "a", "b", "c" }; //Event Names for Task2 FST
+            string initialStateTask2 = "S0"; //initial state for Task2 FST
+            FiniteStateTable Task2 = new FiniteStateTable(stateNamesTask2, eventNamesTask2, initialStateTask2);
+
+            //Initializing NextStates for FST 2
+            Task2.SetNextState("S1", "S0", "a");
+            Task2.SetNextState("S0", "S1", "a");
+            Task2.SetNextState("S0", "S2", "a");
+            Task2.SetNextState("S2", "S1", "b");
+            Task2.SetNextState("S1", "S2", "c");
+
+            //Inializing Actions for FST 2
+            void actionX() { Console.WriteLine("Action X"); }
+            void actionY() { Console.WriteLine("Action Y"); }
+            void actionZ() { Console.WriteLine("Action Z"); }
+            void actionW() { Console.WriteLine("Action W"); }
+            Task2.AddActions(new FiniteStateTable.action("Action X", actionX), "S0", "a");
+            Task2.AddActions(new FiniteStateTable.action("Action Y", actionY), "S0", "a");
+            Task2.AddActions(new FiniteStateTable.action("Action W", actionW), "S1", "a");
+            Task2.AddActions(new FiniteStateTable.action("Action W", actionW), "S2", "a");
+            Task2.AddActions(new FiniteStateTable.action("Action X", actionX), "S1", "b");
+            Task2.AddActions(new FiniteStateTable.action("Action Z", actionZ), "S1", "b");
+            Task2.AddActions(new FiniteStateTable.action("Action X", actionX), "S2", "c");
+            Task2.AddActions(new FiniteStateTable.action("Action Y", actionY), "S2", "c");
+
+            //Data Logging Functions and Variables
+            string fullyQualifiedName = "";
+            int fileNameIndex = 0;
+            string directoryName;
+
+            /*findfileIndex(): takes in a fully qualified file Name and returns the index of the innermost folder
+                                assuming that there is a .txt file at the end of the file Name*/
+            int findFileNameIndex(string fullyQualifiedName)
+            {
+                for (int i = fullyQualifiedName.Length - 1; i >= 0; i--)
+                {
+                    if (fullyQualifiedName[i] == '\\' || fullyQualifiedName[i] == '/')
+                    {
+                        return i;
+                    }
+                }
+                return 0;
+            }
+
+            /*checkFile(): takes in a fully qualified file name and returns true if it ends with a .txt file*/
+            bool checkFile(string fullyQualifiedName)
+            {
+                if (fullyQualifiedName.Length < 4) { return false; }
+                string lastFour = fullyQualifiedName.Substring(fullyQualifiedName.Length - 4);
+                if (lastFour == ".txt") { return true; }
+                else { return false; }
+            }
+
+            //FST Implementation Variables and Functions
+            ConsoleKeyInfo userInput;
+            string key = "x";
+
+            //Implementation of the Finite State Tables
+            while (key != "q")
+            {
+                Console.WriteLine("Enter Keys:");
+                userInput = Console.ReadKey(true);
+                key = (userInput.KeyChar).ToString().ToLower();
+                Console.WriteLine(key);
+                FiniteStateTable.logData(FiniteStateTable.GetTimestamp() + "Trigger Event: " + key); //log trigger event
+
+                //standard if statement to implement any actions of changes of state from keyboard input events for Task2
+                if (Task2.doesExist(key) & Task2.GetState() != Task2.GetNextState(Task2.GetState(), key))
+                {
+                    Task2.stateTransition(key);
+                }
+            }
+            // input file name and check whether the directory exists 
+            Console.WriteLine("Enter name of filename");
+            fullyQualifiedName = Console.ReadLine();
+            fileNameIndex = findFileNameIndex(fullyQualifiedName);
+            directoryName = fullyQualifiedName.Substring(0, fileNameIndex);
+
+            while (((Directory.Exists(directoryName)) & (checkFile(fullyQualifiedName))) == false)
+            {
+                Console.Write("The directory " + directoryName + " doesn't exist or user failed to include a .txt file to write to");
+                Console.WriteLine("\nEnter name of filename");
+                fullyQualifiedName = Console.ReadLine();
+                fileNameIndex = findFileNameIndex(fullyQualifiedName);
+                directoryName = fullyQualifiedName.Substring(0, fileNameIndex);
+            }
+
+            //print each line in the output data log to the provided txt file
+            foreach (string line in FiniteStateTable.getData())
+            {
+                System.IO.File.AppendAllText(path: @fullyQualifiedName, line + Environment.NewLine);
+            }
+        }
+    }
+}
+
