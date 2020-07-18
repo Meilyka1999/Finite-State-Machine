@@ -1,0 +1,219 @@
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Security.Cryptography.X509Certificates;
+using Microsoft.VisualBasic;
+using System.Threading;
+
+namespace A2_Task3
+{
+    class FinateStateTable
+    {
+        public string[,] FST;
+        public int row;
+        public int column;
+        public string output;
+        public string this[int i, int j]
+        {
+            get { return FST[i, j]; }
+            set { FST[i, j] = value; }
+        }
+        public FinateStateTable()
+        {
+            this.row = 3;
+            this.column = 100;
+            this.FST = new string[row, column];
+            this.output = "";
+        }
+        public FinateStateTable(int initRow, int initColumn)
+        {
+            this.row = initRow;
+            this.column = initColumn;
+            this.FST = new string[row, column];
+        }
+
+        public struct Cell_FST
+        {
+            public string indexState;
+            public string actions;
+            public string events;
+        }
+
+        public void SetNextState(Cell_FST initObject, int rowIndex, int columnIndex)
+        {
+            this.FST[rowIndex, columnIndex] = initObject.indexState;
+
+        }
+        public void SetEvents(Cell_FST initObject, int rowIndex, int columnIndex)
+        {
+            this.FST[rowIndex, columnIndex] = (initObject.events).ToString();
+        }
+
+        public void SetActions(Cell_FST initObject, int rowIndex, int columnIndex)
+        {
+            this.FST[rowIndex, columnIndex] = (initObject.actions).ToString();
+        }
+
+
+        public string GetNextState(int i, int j) { return this.FST[i, j]; }
+        public string GetActions(int i, int j) { return this.FST[i, j]; }
+        public string GetEvent(int i, int j) { return this.FST[i, j]; }
+        public string GetTime(int i, int j) { return this.FST[i, j]; }
+
+    }
+
+    class Program
+    {
+        public void LogFile(FinateStateTable FST, string fileName)
+        {
+            try { System.IO.File.AppendAllText(fileName, (FST.output)); Console.WriteLine(FST.output); }
+            catch (Exception e)
+            {
+                Console.WriteLine("CATCH");
+                Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
+            }
+        }
+
+        public void Quit(FinateStateTable FST)
+        {
+            Console.WriteLine("Please enter a fully-qualified file name: ");
+            string filename = Console.ReadLine();
+
+            Console.WriteLine(filename);
+
+            while (!(File.Exists(filename)))
+            {
+                Console.WriteLine("File doesn't exist. Try again.");
+                Console.WriteLine("Please enter a fully-qualified file name: ");
+                filename = Console.ReadLine();
+            }
+            LogFile(FST, filename);
+        }
+        public static string ChangeStateTask3(FinateStateTable FST, int row, int col, string state)
+        {
+            if (state == "A") { FST[row, col] = "B"; return "B"; }
+            else { FST[row, col] = "A"; return "A"; }
+        }
+
+        public static void AddOutput(FinateStateTable FST, string output) { FST.output += output; }
+
+        public static void SetNext(FinateStateTable FST, FinateStateTable.Cell_FST temp, int stateRow, int actionsRow, int count)
+        {
+            FST.SetNextState(temp, stateRow, count); //row 2 in 2D array
+            AddOutput(FST, DateTime.Now.ToString("yyy-MM-dd HH:mm:ss tt\t"));
+            AddOutput(FST, ("Now in state S" + temp.indexState + "\n"));
+            Console.WriteLine("Now in state S{0}", temp.indexState.ToString());
+            FST.SetActions(temp, actionsRow, count); //row 2 in 2D array
+            AddOutput(FST, DateTime.Now.ToString("yyy-MM-dd HH:mm:ss tt\t"));
+            AddOutput(FST, temp.actions + "\n");
+            Console.WriteLine(temp.actions);
+        }
+        public static void SetNext2(FinateStateTable FST1, FinateStateTable FST2, FinateStateTable.Cell_FST temp, int stateRow, int actionsRow, int count)
+        {
+            FST2.SetNextState(temp, stateRow, count); //row 2 in 2D array
+            AddOutput(FST1, DateTime.Now.ToString("yyy-MM-dd HH:mm:ss tt\t"));
+            AddOutput(FST1, ("Now in state S" + temp.indexState+ "\n"));
+            Console.WriteLine("Now in state S{0}", temp.indexState);
+            FST1.SetActions(temp, actionsRow, count); //row 2 in 2D array
+            AddOutput(FST1, DateTime.Now.ToString("yyy-MM-dd HH:mm:ss tt\t"));
+            AddOutput(FST1, temp.actions + "\n");
+            Console.WriteLine(temp.actions);
+        }
+        static void Main(string[] args)
+        {
+            Program p = new Program();
+            FinateStateTable FST1 = new FinateStateTable(3, 100);
+            string state = "0";
+            int count = 0;
+            int eventRow = 0;
+            int stateRow = 1;
+            int actionsRow = 2;
+
+            FinateStateTable FST2 = new FinateStateTable(3, 100);
+            string state2 = "B";
+            int count2 = 0;
+
+
+            bool rightKey = false;
+            string key = "x";
+
+            Console.WriteLine("Case insensitive keys");
+
+            while (key != "q")
+            {
+                Console.WriteLine("Enter Keys:");
+                ConsoleKeyInfo userInput = Console.ReadKey(true);
+                key = userInput.KeyChar.ToString().ToLower();
+                AddOutput(FST1, DateTime.Now.ToString("yyy-MM-dd HH:mm:ss tt\t"));
+                AddOutput(FST1, key + "\n") ;
+
+                FinateStateTable.Cell_FST temp;
+                temp.events = key;
+                temp.actions = null;
+                temp.indexState = null;
+                FST1.SetEvents(temp, eventRow, count);
+
+                FinateStateTable.Cell_FST temp2;
+                temp2.events = key;
+                temp2.actions = null;
+                temp2.indexState = null;
+                FST2.SetEvents(temp2, eventRow, count2);
+
+                Console.WriteLine(key);
+                if (key == "a")
+                {
+                    rightKey = true;
+                    if (state == "0")
+                    {
+                        state = "1";
+                        temp.indexState = state;
+                        temp.actions = "Action X, Action Y";
+                    }
+                    else
+                    {
+                        state = "0";
+                        temp.indexState = state;
+                        temp.actions = "Action W";
+                    }
+                    SetNext(FST1, temp, stateRow, actionsRow, count);
+                    state2 = ChangeStateTask3(FST2, stateRow, count2, state2);
+                    count2++;
+                }
+                else if ((key == "b") && (state == "1"))
+                {
+                    rightKey = true;
+                    state = "2";
+                    temp.indexState = state;
+                    temp.actions = "Action X, Action Z";
+                    SetNext(FST1, temp, stateRow, actionsRow, count);
+
+                }
+                else if ((key == "c") && (state == "2"))
+                {
+                    state = "1";
+                    rightKey = true;
+                    temp.indexState = state;
+                    temp.actions = "Action X, Action Y";
+                    SetNext(FST1, temp, stateRow, actionsRow, count);
+                }
+
+                if (state == "1") {
+                    temp2.actions = "Action J, Action K, Action L";
+                    Thread concurrentMachine = new Thread(() =>SetNext2(FST1, FST2, temp2, stateRow, actionsRow, count2));
+                    concurrentMachine.Start();
+                }
+
+                if (rightKey == true)
+                {
+                    rightKey = false;
+                }
+                count++;
+                Console.WriteLine("\n");
+            }
+            p.Quit(FST1);
+        }
+    }
+}
+
